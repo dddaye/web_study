@@ -1,0 +1,56 @@
+<style>
+    form span {
+        width: 100px;
+    }
+</style>
+
+<div class="row my-5 justify-content-center">
+    <div class="col-6">
+        <h1 class="text-center">LOGIN</h1>
+        <form name="frm" class="card p3">
+            <div class="input-group mb-3">
+                <span class="input-group-text">e-mail</span>
+                <input name="email" class="form-control" value="cute@test.com">
+            </div>
+            <div class="input-group mb-3">
+                <span class="input-group-text">password</span>
+                <input name="password" class="form-control" type="password" value="12341234">
+            </div>
+            <button class="btn btn-primary w-100">로그인</button>
+        </form>
+        <div class="text-end mt-2">
+            <a href="/users/join">회원가입</a>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import {app} from '/javascripts/firebaseInit.js'; //export한 app을 import해서 가져오는거
+    import { getAuth, signInWithEmailAndPassword }
+        from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+        const auth=getAuth(app); // auth객체 가져옴
+
+        $(frm).on('submit', function(e){ //submit 될 때 : 버튼을 누르거나 엔터키 눌렀을 때
+            e.preventDefault();
+            const email=$(frm.email).val(); //form에 있는 email 가져옴
+            const password=$(frm.password).val(); //form에 있는 password 가져옴
+
+            if(email==""){ // 만약 이메일이 비어있으면
+                alert("이메일을 입력하세요"); //이메일 입력 알림창 띄움
+                $(frm.email).focus(); //form email에 사용자가 입력하게 포커스 맞춰짐
+            }else if(password==""){ //패스워드가 비어있으면
+                alert("패스워드를 입력하세요"); // 패스워드 입력 알림창 띄움
+                $(frm.password).focus(); // form password에 사용가자 입력하게 포커스 맞춰짐
+            }else {
+                // 로그인체크 (signInWithEmailAndPassword : 파이어베이스 제공 함수 )
+                signInWithEmailAndPassword(auth, email, password).then(success=>{ //성공하면
+                    sessionStorage.setItem("email", email); //sessionStorage에 이메일 넘겨
+                    sessionStorage.setItem("uid", success.user.uid); //sessionStorage에 uid 넘겨
+                    alert("로그인에 성공했습니다.")
+                    location.href="/"; //home으로 이동
+                }).catch(error=> { 
+                    alert(error.message);
+                })
+            }
+        })
+</script>

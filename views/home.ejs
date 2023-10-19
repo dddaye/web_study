@@ -1,0 +1,170 @@
+<style>
+    #div_books img {
+        cursor : pointer;
+    }
+
+    #div_books .bi-basket{
+        cursor: pointer;
+        color : green;
+    }
+</style>
+
+
+<!-- div로 그룹화 -->
+<div class="row my-5">
+    <div class="col">
+        <!-- 도서를 검색하는 검색창 만들기 -> 사용자입력 & 검색버튼 -->
+        <div class="row mb-2 justify-content-end">
+            <!-- form 쓰는 이유 : 사용자로부터 데이터를 입력받거나 제출하는데 사용 ex)로그인,검색,회원가입 -->
+            <!-- col-6 : 작은화면에서 6개 열 / col-m-4 : 중간크기에서 4개 열 / col-lg-3 : 큰화면에서 3개 열 -->
+            <form name="frm" class="col-6 col-m-4 col-lg-3"> 
+                <!-- input-group : 입력 요소와 해당 입력 요소와 관련된 요소를 그룹화 -->
+                <div class="input-group">
+                    <input name="query" class="form-control" value="자바">
+                    <button class="btn btn-primary">검색</button>
+                </div>
+            </form>
+        </div>
+
+         <!-- 도서검색 글씨 밑에 내용 들어가야 할 #div_books 자리 div로 만들어두기 -->
+        <div id="div_books" class="row"></div>
+
+        <!-- 페이지 이동 -->
+        <div class="text-center">
+            <button id="prev" class="btn btn-primary">이전</button>
+            <span id="span_page" class="mx-3">1/10</span>
+            <button id="next" class="btn btn-primary">다음</button>
+        </div>
+    </div>
+</div>
+
+<!-- div_books에 들어가는 내용 템플릿 만들기 -->
+<!-- index="{{@index}}" : 각 도서의 인덱스 몇번쨰에 있는지 알려줌-->
+<!-- include('books/modal.ejs' : 다른 템플릿 파일인 books/modal.ejs를 가져와서 삽입 -->
+<!-- {{book @this}} 속성을 통해 템플릿 데이터와 연결 -->
+<!-- 장바구니 아이콘 누르면 book attr(속성)에 저장 -->
+<script type="x-handlebars-template" id="temp_books">
+    {{#each documents}}
+        <div class="col-6 col-md-4 col-lg-2 mb-2">
+            <div class="card">
+                <div class="card-body">
+                    <img src="{{chkImage thumbnail}}" width="90%" index="{{@index}}"> 
+                    <div class="ellipsis text-center">{{title}}</div>
+                </div>
+                <div class="card-footer">
+                    {{fmtPrice price}}
+                    <i class="cart bi bi-basket float-end" book="{{book @this}}"></i>
+                </div>
+            </div>
+        </div>
+        <%-include('books/modal.ejs')%> 
+        {{/each}}
+</script>
+
+
+<script>
+    // 이미지가 있으면 이미지를 리턴하고 없으면 링크 이미지 띄움
+    Handlebars.registerHelper("chkImage", function(image){
+        if(image){
+            return image;
+        }else {
+            return "https://via.placeholder.com/120x170"
+        }
+    });
+    // price 값이 들어오면 ,로 000 구분하고 뒤에 원 붙여
+    Handlebars.registerHelper("fmtPrice", function(price){
+        if(price) return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원';
+    });
+
+    // book 함수 @this 쓰려고 만듬 / @this = function(book)
+    Handlebars.registerHelper("book", function(book){
+        return JSON.stringify(book);  // book 객체를 JSON 문자열로 변환한 후 반환(원래는 오브젝트)
+    });
+</script>
+
+<script type="module">
+    import {app} from "/javascripts/firebaseInit.js"
+    import {getDatabase, ref, set, get} // getDatabase=데이터베이스가져와 / ref=어디에 쓸건지 주소 / set=쓰기 / get=장바구니에 이미 있는지 확인하려고 get으로 읽음
+        from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    const db=getDatabase(app); //데이터베이스를 db에 가져와 설정파일이 app에 있으니까 ()안에 app
+ 
+    let query=$(frm.query).val() // form 내에서 이름이 query인 입력 필드 선택 후 값을 읽어와서 query변수에 저장
+    let page=1;
+
+    //장바구니 아이콘을 클릭했을 때
+    $("#div_books").on("click", ".bi-basket", async function(){
+        if(!sessionStorage.getItem("email")){ //세션스토리지에서 이메일을 가져오지 못하면
+            alert("로그인 필요")
+            location.href="/users/login" //로그인창으로 이동
+        }else{
+            //장바구니에 상품 정보 저장
+            const book=JSON.parse($(this).attr("book")); //여기서 this는 cart임 / 스트링을 오브젝트로 바꿀 때 JSON.parse()
+            const ref_book= ref(db, `cart/${sessionStorage.getItem("uid")}/${book.isbn}`);
+
+            //장바구니에 도서가 있는지 체크
+            //성공하면 snapshot에 값이 들어감 / await 가져올떄까지 기다려 / 어디에 있는지 꺼내올 때(get) 레퍼런스(ref)만 지정해주면 됨
+            const snapshot = await get(ref_book); 
+            if(snapshot.val()){
+                alert("이미 추가된 도서")
+            }else{
+                if(!confirm("장바구니에 저장?")) return; //!붙어서 안넣을때 리턴임
+
+                set(ref_book, book);
+                alert("장바구니 추가 완");
+            }
+            
+        }
+    })
+
+    // div_books에서 이미지 클릭하면 함수 실행
+    $("#div_books").on("click", "img", function(){
+        let index=$(this).attr("index"); // 클릭한 버튼(this)의 index 속성 값 가져와서 저장(어떤 도서인지 식별)
+        $("#modal"+index).modal("show"); // "#modal"+index로 특정ID를 가진 모달 다이얼로그 선택 후 보여주기
+    })
+
+
+    getBooks(); // 초기상태 설정 
+
+    $(frm).on('submit', function(e){ // 폼이 제출될 때 아래 함수 실행
+        e.preventDefault(); // 폼이 제출되야 페이지가 로드되거나 다른동작을 수행(기본 동작을 막음)
+        query=$(frm.query).val(); //qurey라는 이름을 가진 필드값을 가져와서 query 변수에 저장(검색쿼리로 사용)
+        page=1; // 페이지번호 1로 설정 -> 검색 결과의 현재 페이지를 나타냄
+        getBooks(); // getBooks 함수 호출(서버로 검색 요청 보내고 검색 결과 화면에 표시)
+    });
+
+    // 다음 버튼을 클릭한 경우
+    $("#next").on("click", function(){
+        page++;
+        getBooks();
+    });
+
+    // 이전 버튼을 클릭한 경우
+    $("#prev").on("click", function(){
+        page--;
+        getBooks();
+    });
+
+    function getBooks(){ // getBooks()함수 -> 페이지가 로드될때 책 목록을 가져옴
+        $.ajax({
+            type:"get",
+            url:"https://dapi.kakao.com/v3/search/book?target=title", //카카오 도서검색에서 가져옴
+            headers:{"Authorization":"KakaoAK f23e7e2e27ac02c8ef22fe940b70cfd0"}, //카카오API
+            data:{query:query, page:page, size:6}, // query:검색어 page:검색결과 페이지 번호 / size:한페이지에 여섯개보여줌
+            success: function(data){ //ajax 성공하면 실행되는 함수
+                let temp=Handlebars.compile($("#temp_books").html()); //템플릿 + 데이터 결합
+                $("#div_books").html(temp(data)); // 컴파일된 템플릿 data 적용해서 html만들고 div_books에 보여줘
+
+                // 검색 결과 페이지의 번호 및 총페이지수를 계산하고 html 문서에 업데이트
+                let last=Math.ceil(data.meta.pageable_count/5); // pageable_count(검색결과의 총 개수)/5 -> ceil(올림) -> last에 저장 
+                $("#span_page").html(page + '/' + last); // 페이지 번호와 총 페이지 수를 #span_page에 업데이트
+
+                if(page == 1) $("#prev").attr("disabled", true); // page ==1인지 먼저 확인 -> 첫번쨰 페이지면 버튼 비활성화
+                else $("#prev").attr("disabled", false); // 첫번째 아니면 버튼 활성화 (이전페이지로 이동 가능)
+
+                if(data.meta.is_end) $("#next").attr("disabled", true); // data객체 내의 is_end 속성 확인(마지막페이지 여부를 나타내는 논리값) -> 마지막이면 버튼 비활성
+                else $("#next").attr("disabled", false); // 마지막 페이지 아니면 버튼 활성화
+            }
+        });
+    }
+</script>
+

@@ -1,0 +1,49 @@
+<nav class="navbar bg-primary navbar-expand-lg" data-bs-them="dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">HOME</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="/books">도서검색</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="/locals">지역검색</a>
+              </li>
+              <li class="nav-item" id="cart" style="display: none;">
+                <a class="nav-link active" aria-current="page" href="/books/cart">장바구니</a>
+              </li>
+            </ul>
+            <!-- d-flex : 오른쪽메뉴로 사용 -->
+            <ul class="navbar-nav d-flex"> 
+                <li class="nav-item" id="login">
+                  <a class="nav-link active" aria-current="page" href="/users/login">LOGIN</a>
+                </li>
+                <!-- style="display: none;" 처음에 안보이게 하는거 -->
+                <li class="nav-item" id="email" style="display: none;">
+                  <a class="nav-link active" aria-current="page" href="/users/mypage">email</a>
+                </li>
+                <li class="nav-item" id="logout" style="display: none;">
+                  <a class="nav-link active" aria-current="page" href="/users/logout">LOGOUT</a>
+                </li>
+              </ul>
+          </div>
+    </div>
+</nav>
+
+<script>
+  if(sessionStorage.getItem("email")){ // sessionStorage에서 email 키를 확인해 로그인되어있는지 확인
+    $("#login, #email, #logout, #cart").toggle(); //로그인 되면 이메일 로그아웃이 보여짐 / 로그아웃되면 로그인만 보임
+    $("#email a").html(sessionStorage.getItem("email")) // 로그인 하면 마이페이지링크에 sessionStorage에서 가져온 email 보임(a태그에 넣어줌)
+  }
+
+  $("#logout").on("click", "a", function(e){ //로그아웃 링크 클릭하면 실행되는 함수
+    e.preventDefault(); // 새로운 페이지로 이동하는 동작 방지 이벤트
+    if(confirm('로그아웃?')){ // 로그아웃 클릭하면 로그아웃할건지 물어봄
+      sessionStorage.clear(); // 확인 누르면 세션스토리지 비워서 로그아웃상태 만듬
+      location.href='/'; // 로그아웃하면 홈페이지로 이동
+    }
+  })
+</script>
