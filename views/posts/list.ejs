@@ -1,0 +1,101 @@
+<div class="my-5">
+    <h1 class="text-center mb-5">게시판</h1>
+    <div class="row">
+        <div class="col">
+            게시글 : <span id="total"></span>건
+        </div>
+    </div>
+    <div class="text-end">
+        <button id="btn-insert" class="btn btn-primary">글쓰기</button>
+    </div>
+    <hr>
+    <div id="div_posts"></div>
+    <div id="pagination" class="pagination justify-content-center mt-5"></div>
+</div>
+
+<!--  {{#each .}} .이 들어가면 배열 반복 -->
+<!-- read?는 read에서 뭘 가져갈까?임 -->
+<script id="temp_posts" type="x-handlebars-template">
+    <table class="table">
+        {{#each .}}
+            <tr class="text-center">
+                <td>{{index}}</td>
+                <td><a href="/posts/read?id={{id}}">{{title}}</a></td>
+                <td>{{email}}</td>
+                <td>{{date}}</td>
+            </tr>
+        {{/each}}
+    </table>
+</script>
+
+<script type="module">
+    import {app} from "/javascripts/firebaseInit.js"
+    import {getFirestore, collection} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import {query, orderBy, getDocs, where, doc} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    const db = getFirestore(app);
+
+    let page=1; // 페이지 지정
+    const size=3; // 페이지당 보여지는 글 목록 수
+    let total=0; // 총 게시글 수 
+
+    getPosts(); // 페이지 로드시 getPosts 함수 호출하여 초기 데이터 가져옴
+
+    async function getPosts(){
+        // posts 컬렉션에서 날짜에 따라 내림차순으로 정렬된 쿼리 생성
+        const q=query(collection(db, "posts"), orderBy("date", "desc"))
+        // 쿼리 실행 후 결과 가져옴
+        const snapshot = await getDocs(q);
+        //console.log("................", snapshot.docs.length)
+        $("#total").html(snapshot.docs.length) // 총 게시글 수를 화면에 표시
+
+        //페이지네이션 처리
+        // 이전에 가져온 total과 데이터베이스에서 가져온 snapshot.docs.length이 다르면 페이지수 업데이트 및 페이지네이션 초기화
+        if(total != snapshot.docs.length){
+            total=snapshot.docs.length; // 새로운 총 게시글수를 저장
+            const totalPages = Math.ceil(total/size); // 페이지 수 계산
+            $("#pagination").twbsPagination("changeTotalPages", totalPages, 1); // Bootstrap 페이지네이션 플러그인에게 페이지 수를 변경하라는 명령을 전달
+        }
+        
+        let rows=[]; //데이터 담을 배열 초기화
+        snapshot.docs.forEach((doc, index)=>{ //Firestore에서 가져온 데이터를 순회하며 처리
+            const start = (page-1)*size; //현재 페이지에 표시할 데이터의 시작과 
+            const end = (page*size)-1; //끝 인덱스를 계산
+            if(index>=start && index<=end){ //현재 페이지에 표시할 데이터인지 확인
+                //console.log(index, doc.id, doc.data())
+                // 페이지에 표시할 데이터를 rows 배열에 추가
+                // index는 현재 데이터가 몇번째인지 나타냄
+                rows.push({index:index+1, id:doc.id, ...doc.data()})
+            }
+        });
+        //console.log(rows)
+        const temp = Handlebars.compile($("#temp_posts").html()); //Handlebars를 사용하여 템플릿을 컴파일
+        $("#div_posts").html(temp(rows)); //컴파일된 템플릿을 사용하여 페이지에 데이터 표시
+    }
+
+    //글쓰기 버튼
+    $("#btn-insert").on("click", function(){
+        if(!sessionStorage.getItem("email")){ //로그인되어있지 않으면
+            location.href="/users/login" // 로그인 페이지로 이동
+            sessionStorage.setItem("target", "/posts/insert"); //로그인 후 글쓰기 페이지로 다시 이동됨
+        }else{ // 로그인 되어있으면 바로 글쓰기 페이지로 이동
+            location.href="/posts/insert"
+        }
+    });
+
+    // 페이지네이션 처리
+    $('#pagination').twbsPagination({
+        totalPages:10, //총 페이지 번호 수
+        visiblePages: 5, // 하단에서 한 번에 보여 지는 페이지 번호 수
+        startPage : 1, // 시작 시 표시되는 현재 페이지
+        initiateStartPageClick: false, // 플러그인이 시작 시 페이지 버튼 클릭 여부 (default : true) 
+        first : '<<', // 페이지네이션 버튼 중 처음으로 돌아가는 버튼에 쓰여 있는 텍스트
+        prev : '<', // 이전 페이지 버튼에 쓰여 있는 텍스트
+        next : '>', // 다음 페이지 버튼에 쓰여 있는 텍스트
+        last : '>>', // 페이지네이션 버튼 중 마지막으로 가는 버튼에 쓰여 있는 텍스트
+        onPageClick: function (event, clickPage) { // 페이지가 클릭될 때마다
+        page=clickPage;
+        getPosts();  // 해당 페이지의 데이터를 가져옴
+}
+});
+</script>

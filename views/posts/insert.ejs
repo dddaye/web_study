@@ -1,0 +1,46 @@
+<div class="my-5">
+    <h1 class="text-center mb-5">글쓰기</h1>
+    <form name="frm">
+        <input name="title" placeholder="제목을 입력하세요." class="form-control mb-5">
+        <textarea name="body" rows="10" class="form-control" placeholder="내용을 입력하세요."></textarea>
+        <div class="text-center my-3">
+            <button type="submit" class="btn btn-primary px-5">등록</button>
+            <button type="reset" class="btn btn-secondary px-5">취소</button>
+        </div>
+    </form>
+</div>
+
+<script type="module">
+    import {app} from "/javascripts/firebaseInit.js"
+    import {getFirestore, collection, addDoc} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    const db = getFirestore(app);
+
+    $(frm).on("submit", async function(e){
+        e.preventDefault();
+        const title = $(frm.title).val(); //제목과
+        const body = $(frm.body).val(); // 내용을 가져옴
+        if(title==""){ //제목이 없으면
+            alert("제목을 입력해 주세요."); //알림창 띄움
+            $(frm.title).focus(); //제목입력폼으로 포커스 이동
+            return;
+        }
+        if(body==""){ // 내용 없으면
+            alert("내용을 입력해 주세요.");//알림창 띄움
+            $(frm.body).focus(); //내용입력폼으로 포커스 이동
+            return;
+        }
+        if(confirm("게시글을 등록하시겠습니까?")){ // 모든 내용 입력 후 등록 버튼
+            //게시글 등록
+            const email = sessionStorage.getItem("email"); //현재 로그인한 사용자의 이메일을 가져옴
+            const date = moment(new Date()).format("YYYY-MM-DD HH:mm:ss"); //현재 날짜 및 시간을 moment 라이브러리를 사용
+            const data = {title, body, email, date} // 게시글에 필요한 데이터를 객체로 구성
+            //console.log(data)
+            //firestore의 posts 컬렉션에 데이터 추가 
+            // addDoc를 사용하면 Firestore에서 자동으로 문서 ID를 생성
+            await addDoc(collection(db, "posts"), data); 
+            alert("게시글이 등록되었습니다.")
+            location.href="/posts"; // 게시글 등록 후 게시글 목록 페이지로 이동
+
+        }
+    })
+</script>

@@ -1,0 +1,61 @@
+<div class="my-5">
+    <h1 class="text-center mb-5">게시글 정보</h1>
+    <div id="btn-group" class="text-end mb-2">
+        <button id="btn-update" class="btn btn-primary btn-sm">수정</button>
+        <button id="btn-delete" class="btn btn-danger btn-sm">삭제</button>
+    </div>
+    <div id="div_post"></div>
+    <%-include('comments.ejs')%>
+</div>
+
+<script id="temp_post" type="x-handlebars-template">
+    <div class="card">
+        <div class="card-body text-center">
+            <h5>{{title}}</h5>
+            <hr>
+            <div>{{body}}</div>
+        </div>
+        <div class="card-footer text-center">
+            <small>작성자: {{email}}</small>
+            <small>작성일: {{date}}</small>
+        </div>
+    </div>
+</script>
+
+<script type="module">
+    import {app} from "/javascripts/firebaseInit.js"
+    import {getFirestore, setDoc, doc, getDoc, deleteDoc} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    // 게시글 ID를 통해 해당 게시글의 데이터를 firestore에서 가져옴
+    const db = getFirestore(app);
+    const id = "<%=id%>";
+    const snapshot = await getDoc(doc(db, `posts/${id}`));
+    //console.log(snapshot.data())
+    const post = snapshot.data();
+    //console.log(id)
+
+    //게시글 템플릿 컴파일
+    const temp=Handlebars.compile($("#temp_post").html());
+    $("#div_post").html(temp(snapshot.data()));
+
+    //사용자 권한에 따라 버튼 숨김처리
+    // sessionStorage의 email과 post 작성자 email이 다르면 숨김
+    if(sessionStorage.getItem("email") != post.email){
+        $("#btn-group").hide();
+    };
+
+    // 게시글 삭제 버튼
+    $("#btn-delete").on("click", async function(){
+        if(confirm(`ID : ${id} 게시글을 삭제하시겠습니까>`)){
+            //게시글 삭제 로직
+            await deleteDoc(doc(db, `posts/${id}`))
+            alert("삭제완료")
+            location.href="/posts";
+        };
+    });
+
+    // 게시글 수정 버튼
+    $("#btn-update").on("click", function(){
+        location.href=`/posts/update?id=${id}`;
+    })
+</script>

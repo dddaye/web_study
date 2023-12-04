@@ -15,6 +15,12 @@
               <li class="nav-item" id="cart" style="display: none;">
                 <a class="nav-link active" aria-current="page" href="/books/cart">장바구니</a>
               </li>
+              <li class="nav-item" id="favorite" style="display: none;">
+                <a class="nav-link active" aria-current="page" href="/locals/favorite">즐겨찾기</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="list" href="/posts">게시판</a>
+              </li>
             </ul>
             <!-- d-flex : 오른쪽메뉴로 사용 -->
             <ul class="navbar-nav d-flex"> 
@@ -35,7 +41,7 @@
 
 <script>
   if(sessionStorage.getItem("email")){ // sessionStorage에서 email 키를 확인해 로그인되어있는지 확인
-    $("#login, #email, #logout, #cart").toggle(); //로그인 되면 이메일 로그아웃이 보여짐 / 로그아웃되면 로그인만 보임
+    $("#login, #email, #logout, #cart, #favorite").toggle(); //로그인 되면 이메일 로그아웃이 보여짐 / 로그아웃되면 로그인만 보임
     $("#email a").html(sessionStorage.getItem("email")) // 로그인 하면 마이페이지링크에 sessionStorage에서 가져온 email 보임(a태그에 넣어줌)
   }
 

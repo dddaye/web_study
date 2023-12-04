@@ -6,7 +6,7 @@ font-family: 'Yeon Sung', cursive;
 }
 
 /* 텍스트 말줄임표 */
-ellipsis { 
+.ellipsis { 
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;

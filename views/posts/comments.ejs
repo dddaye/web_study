@@ -1,0 +1,189 @@
+<div class="my-5">
+    <h4 class="text-center mb-3">댓글 관리</h4>
+    <!-- 로그인 했을 때 -->
+    <div id="div_insert" style="display: none;">
+        <textarea id="txt_body" class="form-control" rows="5"></textarea>
+        <div class="text-end mt-2">
+            <button id="btn_insert" class="btn btn-primary btn-sm px-5">등록</button>
+        </div>
+    </div>
+    <!-- 로그인 하지 안았을 때 -->
+    <div id="div_login">
+        <button id="btn_login" class="btn btn-primary w-100">로그인</button>
+    </div>
+    <div>
+        <div class="mb-3">댓글수 : <span id="total"></span></div>
+    </div>
+    <div id="div_comments"></div>
+    <div id="pagination" class="pagination justify-content-center mt-5"></div>
+</div>
+
+<script id="temp_comments" type="x-handlebars-template">
+    {{#each .}}
+        <div>
+            <div>
+                <small><b>{{email}}</b></small>
+                <small>{{date}}</small>
+            </div>
+            <div class="view{{id}}">
+                <div class="body ellipsis">{{body}}</div>
+                <div class="text-end mt-2" style={{fn_display email}}>
+                    <button class="btn-update btn btn-success btn-sm" cid="{{id}}">수정</button>
+                    <button class="btn-delete btn btn-danger btn-sm" cid="{{id}}">삭제</button>
+                </div>
+            </div>
+            <div class="edit{{id}}" style="display:none">
+                <div>
+                    <textarea class="body form-control" rows="5">{{body}}</textarea>
+                </div>
+                <div class="text-end mt-2">
+                    <button class="btn-save btn btn-primary btn-sm" cid="{{id}}">저장</button>
+                    <button class="btn-cancel btn btn-secondary btn-sm" cid="{{id}}">취소</button>
+                </div>
+            </div>
+        </div>
+        <hr>
+    {{/each}}
+</script>
+
+<script>
+    Handlebars.registerHelper("fn_display", function(email){
+        if(sessionStorage.getItem("email") != email){
+            return "display:none"
+        }
+    });
+</script>
+
+<script type="module">
+    import { app } from "/javascripts/firebaseInit.js";
+    import {getFirestore, collection, addDoc, deleteDoc} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    import {query, orderBy, getDocs, where, doc, setDoc, getDoc} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    const db = getFirestore(app);
+
+    let total=0;
+    const size=3;
+    let page = 1;
+
+    const pid = "<%=id%>"
+    //alert(pid)
+
+    // sessionStorage에서 email을 가져온 후 로그인했으면 div_insert
+    // 로그아웃 상태이면 div_login
+    if(sessionStorage.getItem("email")){
+        $("#div_insert, #div_login").toggle();
+    }
+
+    //댓글 길 때 ...으로 표시 -> 댓글 클릭하면 전체 볼 수 있음 
+    $("#div_comments").on("click", ".body", function(){
+        $(this).toggleClass("ellipsis")
+    });
+
+    //댓글수정 후 저장버튼
+    $("#div_comments").on("click", ".btn-save", async function(){
+        const id=$(this).attr("cid"); // 클릭한 버튼의 cid 속성값을 가져와서 id 변수에 할당
+        const edit = $(this).parent().parent(); // 클릭한 버튼의 부모->상위부모 요소 찾아 edit 변수에 할당
+        // edit 변수에서 body 클래스를 가진 요소를 찾아 그 값(댓글내용)을 가져와 body 변수에 할당
+        const body = edit.find(".body").val(); 
+        if(confirm("댓글을 수정하시겠습니까?")){ //댓글 수정 여부 확인 알림창 표시
+            //수정할 댓글 내용 읽어오기
+            const comment = await getDoc(doc(db, `comments/${id}`));
+            //console.log(comment.data());
+            // 기존댓글 + 새로운댓글 합쳐서 Firestore에 저장
+            await setDoc(doc(db, `comments/${id}`),{ 
+                ...comment.data(), // 기존댓글 (... 붙은건 전부 기존꺼)
+                body:body // new댓글 변수에 할당
+            });
+            alert("수정완료")
+            getComments(); //수정된 댓글 목록 다시 불러오기
+        }
+    })
+
+    // 댓글 수정 중 취소 버튼 클릭
+    $("#div_comments").on("click", ".btn-cancel", async function(){ //취소버튼 클릭시
+        const id = $(this).attr("cid"); //클릭한 버튼의 cid 속성 값을 가져와 id 변수에 할당
+        $("#div_comments .edit" + id).hide(); // 해당 id가진 댓글 수정화면 감추고
+        $("#div_comments .view" + id).show(); // 댓글 내용 보여주는 화면 표시
+    });
+
+    // 댓글 수정 버튼 클릭
+    $("#div_comments").on("click", ".btn-update", async function(){ // 수정버튼클릭시
+        const id = $(this).attr("cid"); // 클릭한 버튼의 cid속성 값을 가져와 id변수에 할당
+        $("#div_comments .edit" + id).show(); //해당 id를 가진 댓글의 수정화면을 표시
+        $("#div_comments .view" + id).hide(); // 해당 댓글의 내용을 보여주는 화면을 감춤
+    })
+
+    // 댓글삭제버튼 클릭
+    $("#div_comments").on("click", ".btn-delete", async function(){
+        const id = $(this).attr("cid"); // 클릭한 버튼의 cid 속성값을 가져와 id 변수에 할당
+        await deleteDoc(doc(db, `comments/${id}`)); //Firestroe에서 해당 id 가진 댓글 삭제
+        alert("댓글 삭제 성공")
+        getComments();
+    })
+
+    //댓글 저장 버튼
+    $("#btn_insert").on("click", async function(){
+        const date = moment(new Date()).format("YYYY-MM-DD HH:mm:ss"); // 현재날짜시간 가져와 문자열로 변환
+        const email = sessionStorage.getItem("email"); //sessionStorage에서 email을 가져와 변수에 할당
+        const body = $("#txt_body").val(); // 댓글 입력된 값을 가져와 body에 할당
+        if(body==""){ // 댓글창이 비어있는지 확인
+            alert("댓글을 입력하세요.") // 비어있을때 저장 누르면 뜨는 알림창
+            $("#txt_body").focus(); // 댓글창으로 포커스 이동
+        }else {
+            //댓글 저장
+            const data={pid, email, date, body} //data 객체 생성 후 정보 담기
+            // 여기서 pid는 어떤 게시물에 대한 댓글인시 식별하는 값
+            await addDoc(collection(db, "comments"), data); // Firestore에 새로운 댓글 추가
+            $("#txt_body").val(""); //댓글 저장 후 입력상자 비움
+
+            alert("댓글이 저장되었습니다.");
+            getComments(); // 업데이트 된 댓글 목록 다시 불러오기
+        }
+    });
+
+    getComments();
+    async function getComments(){
+        const q=query(
+            collection(db, "comments"), 
+            where("pid","==",pid), //특정 게시물(pid)에 대한 댓글만 가져오도록 조건 설정
+            orderBy("date", "desc") // 날짜를 기준으로 내림차순 정렬
+            ); 
+        const snapshot = await getDocs(q); //Firestore에서 댓글 데이터 가져오기
+        //console.log("...................", snapshot.docs.length)
+
+        // 댓글의 총 개수가 변경되었을 때 페이지 수 업데이트
+        if(total != snapshot.docs.length){
+            total = snapshot.docs.length; // 댓글의 전체 개수 업데이트
+            const totalPages = Math.ceil(total/size); // 페이지 수 계산
+            $("#pagination").twbsPagination("changeTotalPages", totalPages, 1); // 페이지네이션 업데이트
+        }
+
+        $("#total").html(total) // 댓글의 총 개수를 HTML 요소에 출력
+        let rows=[]; // 렌더링할 댓글 데이터를 담을 배열 초기화
+        snapshot.docs.forEach((doc, index)=>{ // 댓글 데이터 순회
+            const start = (page-1)* size;
+            const end = (page*size)-1;
+            if(index>=start && index<=end){
+                rows.push({id:doc.id, ...doc.data()}) // 현재 페이지 범위에 해당하는 댓글 데이터만 rows에 추가
+            }
+        });
+        //console.log(rows)
+        const temp=Handlebars.compile($("#temp_comments").html());
+        $("#div_comments").html(temp(rows));
+    };
+
+    $('#pagination').twbsPagination({
+        totalPages:10, //총 페이지 번호 수
+        visiblePages: 5, // 하단에서 한 번에 보여 지는 페이지 번호 수
+        startPage : 1, // 시작 시 표시되는 현재 페이지
+        initiateStartPageClick: false, // 플러그인이 시작 시 페이지 버튼 클릭 여부 (default : true) 
+        first : '<<', // 페이지네이션 버튼 중 처음으로 돌아가는 버튼에 쓰여 있는 텍스트
+        prev : '<', // 이전 페이지 버튼에 쓰여 있는 텍스트
+        next : '>', // 다음 페이지 버튼에 쓰여 있는 텍스트
+        last : '>>', // 페이지네이션 버튼 중 마지막으로 가는 버튼에 쓰여 있는 텍스트
+        onPageClick: function (event, clickPage) {
+        page=clickPage;
+        getComments(); 
+        }
+    });
+
+</script>
